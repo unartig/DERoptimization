@@ -1,0 +1,6 @@
+ipopt.exe
+libipoptfort.dll
+__pycache__
+.idea
+venv
+starter.py

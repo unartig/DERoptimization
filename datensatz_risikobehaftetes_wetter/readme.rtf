@@ -1,0 +1,61 @@
+#######################################
+### Winddaten:                        #
+#######################################
+	Input Datei: 	R0003.csv
+	Art:		Wetterdaten(Temperatur, Windstärke, Bestrahlungsstärke)
+	Ort: 		südlicher Teil von Nordfriesland
+	Zeitraum: 	2017 und 2018
+	
+	Einbau Windfronten Verschiebung, 2 Betrachtete Zeiträume
+		1.) Lange Windfront
+		Gesamtdauer: 	15.03. 	- 20.03.2017   -> 7 Tage
+		Windfront:	17.03. 4:00 	- 18:03. 18:00 -> 38 Stunden
+		Verschiebung:   +3 Stunden/-3 Stunden
+		Output Datei:	wind_2017-03-15-00:00.csv
+			1. Spalte: Stunden seit dem 15.03.17 00:00
+			2. Spalte: Windstärkeverlauf mit Verschiebung -3 Stunden [m/s]
+			3. Spalte: Windstärkeverlauf ohne Verschiebung [m/s]
+			4. Spalte: Windstärkeverlauf mit Verschiebung +3 Stunden [m/s]
+		
+		2.) Kürzere Windfront
+		Gesamtdauer:	01.11.		- 07.11.2018   -> 7 Tage
+		Windfront:	01.11. 23:00	- 02.11. 16:00 -> 17 Stunden
+		Verschibeung:	+3 Stunden/-3 Stunden
+		Output Datei:	wind_2018-11-01-00:00.csv
+			1. Spalte: Stunden seit dem 01.11.18 00:00
+			2. Spalte: Windstärkeverlauf mit Verschiebung -3 Stunden [m/s]
+			3. Spalte: Windstärkeverlauf ohne Verschiebung [m/s]
+			4. Spalte: Windstärkeverlauf mit Verschiebung +3 Stunden [m/s]
+
+######################################
+### Leistungsverläufe:               #
+######################################
+	Input Datei: 	E_141_4200.csv
+	Art:		Kennlinie einer Enercon E-141 4200kW
+			Map: Windstärke[m/s] -> Leistung[kW]
+	
+	Für beide betrachteten Zeiträumen wurde für jeden Zeitpunkt jeweils die zu der momentanen Windstärke korresponierende Leistung
+	in den Kennliniendaten der Windkraftanlage ermittelt. Ergbnis sind für die beiden Zeiträume je drei Leistungsverläufe einmal der reguläre, einmal der um 3 Stunden
+	nach vorne verschobene und einmal der um drei Stunden nach hinten verschobene Verlauf.
+	
+		1.) Lange Windfront:
+		Input:		wind_2017-03-15-00:00.csv
+		Gesamtdauer: 	15.03. 	- 20.03.2017   -> 7 Tage
+		Windfront:	17.03. 4:00 	- 18:03. 18:00 -> 38 Stunden
+		Verschiebung:   +3 Stunden/-3 Stunden
+		Output Datei:	power_2017-03-15-00:00.csv
+			1. Spalte: Stunden seit dem 15.03.17 00:00
+			2. Spalte: Leistungsverlauf bei Verschiebung der Windfront um -3 Stunden [kW]
+			3. Spalte: Leistungsverlauf ohne Verschiebung [kW]
+			4. Spalte: Leistungsverlauf bei Verschiebung der Windfront um +3 Stunden [kW]
+
+		2.) Kürzere Windfront
+		Input:		wind_2018-11-01-00:00.csv
+		Gesamtdauer:	01.11.		- 07.11.2018   -> 7 Tage
+		Windfront:	01.11. 23:00	- 02.11. 16:00 -> 17 Stunden
+		Verschibeung:	+3 Stunden/-3 Stunden
+		Output Datei:	power_2018-11-01-00:00.csv
+			1. Spalte: Stunden seit dem 01.11.18 00:00
+			2. Spalte: Leistungsverlauf bei Verschiebung der Windfront um -3 Stunden [kW]
+			3. Spalte: Leistungsverlauf ohne Verschiebung [kW]
+			4. Spalte: Leistungsverlauf bei Verschiebung der Windfront um +3 Stunden [kW]
