@@ -60,7 +60,7 @@ power_production = np.array([5 * p for p in power_production])
 electricity_price = np.array(data['[€/MWh]'])
 
 
-def t1_battery_model():
+def t1_battery_model(power_production, electricity_price):
     # Concrete Model
     model = ConcreteModel()
 

@@ -24,7 +24,7 @@ p2h_cost = 3
 power_production = np.array([10, 9,  9,  8,  10, 11, 12, 13, 10, 9, 10, 9,  9,  8,  10, 11, 12, 13, 10, 9, 8, 8, 7, 8])
 electricity_price = np.array([1,  2,  3,  4,  5,  5,  5,  5,  4,  4, 1,  2,  3,  4,  5,  5,  5,  5,  4,  4, 6, 7, 8, 1])
 
-def t1_p2h_model():
+def t1_p2h_model(power_production, electricity_price):
     # Concrete Model
     model = ConcreteModel()
 
@@ -71,7 +71,7 @@ def t1_p2h_model():
     return model
 
 
-m = model_()
+m = t1_p2h_model()
 solver = SolverFactory('ipopt')
 results = solver.solve(m)
 
