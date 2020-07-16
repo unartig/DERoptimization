@@ -194,10 +194,10 @@ def t2_rr_battery_model(bid, power_production, critical_t):
 
 def solve(model):
     solver = SolverFactory('ipopt')
-    results= solver.solve(model, tee=True, keepfiles=True)
-    model.display()
+    results= solver.solve(model)# , tee=True, keepfiles=True)
+    #model.display()
 
-    results.write()
+    #results.write()
     return model
 
 
