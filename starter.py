@@ -14,7 +14,7 @@ rebap = np.array(rebap)
 
 power_data = pd.read_csv('datensatz_risikobehaftetes_wetter/power_2018-11-01.csv')
 power_production = np.array(power_data['p[kW]'])
-power_production = np.true_divide(power_production, 10000)# MWh
+power_production = np.true_divide(power_production, 100)# MWh
 
 lower = [0 + 0.5*x for x in range(0, 169)]
 upper = [50 + 0.5*x for x in range(0, 169)]
@@ -29,7 +29,7 @@ char_dict = {i: char[i] for i in range(0, len(mid))}
 der_dict = {None: {
     'time': range(0, 169),
     'charge_power': (0, 48),
-    'discharge_power': (0, 0),
+    'discharge_power': (0, 48),
     'corridor_lower_bound': lower_dict,
     'corridor_upper_bound': upper_dict,
     'soc_initial': mid_dict,
@@ -38,8 +38,8 @@ der_dict = {None: {
 }}
 
 
-lower1 = [0 + 0.5*x for x in range(0, 48)]
-upper1 = [5 + x for x in range(0, 48)]
+lower1 = [0 + 0.5*x for x in range(0, 169)]
+upper1 = [5 + x for x in range(0, 169)]
 mid1 = [lower1[i] + (upper1[i] - lower1[i]) for i in range(0, len(lower1))]
 
 lower_dict1 = {i: lower1[i] for i in range(0, len(lower1))}
@@ -47,7 +47,7 @@ upper_dict1 = {i: upper1[i] for i in range(0, len(upper1))}
 mid_dict1 = {i: mid1[i] for i in range(0, len(mid1))}
 
 der_dict1 = {None: {
-    'time': range(0, 48),
+    'time': range(0, 169),
     'charge_power': (0, 111),
     'discharge_power': (0, 0),
     'corridor_lower_bound': lower_dict1,
@@ -67,6 +67,9 @@ result = optimisation.solve()
 soc0 = [result.blocks[0].soc[t]() for t in result.time]
 soc1 = [result.bought_power[t]() * result.electricity_price[t] for t in result.time]
 r = [result.revenue[t]() for t in result.time]
+n = [result.net_output[t]() for t in result.time]
+
+print(n)
 
 fig = plt.figure()
 ax11 = fig.add_subplot(2, 1, 1)
@@ -80,6 +83,9 @@ ax11.plot(soc0)
 #ax12.plot(upper1)
 ax12.plot(soc1)
 ax12.plot(r)
+ax12.plot(n)
+ax12.plot(power_production)
+ax12.legend(["bought", "revenue", "output"])
 
 
 plt.show()
