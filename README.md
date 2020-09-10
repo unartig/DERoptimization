@@ -43,18 +43,20 @@ The code structure will be refactored in the near future (moving to object orien
 Right now the models can be used by importing.
 
 ```
-import T1_Battery as t1b
-import T1_P2H as t1p2h
-import T2_3_Battery as t2b
-import T3_Imbalance_Reduction_Battery as t2brr
+import Economic_Battery as eco_model_battery
+import Imbalance_Reduction_Battery as imbalance_red_battery
 ```
 
-Following models can be used:
+Following models can be used: 
 ```
-t1_battery_model(power_production, electricity_price)
-t1_p2h_model(power_production, electricity_price)
-t2_3_battery_model(electricity_price, power_production, critical_t)
-t2_rr_battery_model(bid, power_production, critical_t)
+eprice_data = pd.read_csv('datensatz_risikobehaftetes_wetter/eprice_2018-11-01.csv', sep=';')
+eprice_data = eprice_data['Deutschland/Luxemburg[€/MWh]']
+eprice_data = eprice_data.iloc[:].str.replace(',', '.').astype(float)# cant read X,Y as float
+electricity_price = np.array(eprice_data)
+
+power_data = pd.read_csv('datensatz_risikobehaftetes_wetter/power_2018-11-01.csv')
+power_production = np.array(power_data['p[kW]'])
+power_production = np.true_divide(power_production, 10000)# MWh
 
 ```
 The parameters ``power_production``, ``electricity_price`` and ``bid`` have to be arrays of the same size. 
