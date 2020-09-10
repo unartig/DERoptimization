@@ -41,6 +41,8 @@ class DEROptimisation:
         model.time = Set(initialize=range(0, t))
         model.ders = Set(initialize=range(0, len(self.der_list)))
 
+        model.bought_power = Var(model.time, within=NonNegativeReals, initialize=0)
+
         '''DATA INITIALISATION'''
         # [MW]
         model.plant_power_production = Param(model.time, initialize=dict(enumerate(power_production)), within=Reals)
@@ -57,10 +59,10 @@ class DEROptimisation:
 
         def discharge_power_sum_rule(m, t):
             return sum(m.blocks[der].discharge_power[t] for der in m.ders)
-        model.discharge_power_sum = Expression(model.time, rule=charge_power_sum_rule)
+        model.discharge_power_sum = Expression(model.time, rule=discharge_power_sum_rule)
 
         def charge_limit(m, t):
-            return m.charge_power_sum[t] <= m.plant_power_production[t]
+            return m.charge_power_sum[t] <= m.plant_power_production[t] + m.bought_power[t]
         model.charge_limit_constr = Constraint(model.time, rule=charge_limit)
 
         def net_output_expression(m, t):
@@ -69,11 +71,19 @@ class DEROptimisation:
         # [MW]
         model.net_output = Expression(model.time, rule=net_output_expression)
 
+        def energy_direction_rule(m, t):
+            return m.net_output[t] * m.bought_power[t] == 0
+        model.energy_direction = Constraint(model.time, rule=energy_direction_rule)
+
         def revenue_expression(m, t):
             # Revenue [€] = Net Output (t) [MW] * Electricity Price (t) [€/MWh]
-            return m.net_output[t] * m.electricity_price[t]
+            return (m.net_output[t] - m.bought_power[t]) * m.electricity_price[t]
         # [€]
         model.revenue = Expression(model.time, rule=revenue_expression)
+
+        def obj_rule(m):
+            return sum(m.revenue[t] for t in m.time)
+        model.obj = Objective(rule=obj_rule)
 
         return model
 
@@ -83,11 +93,11 @@ class DEROptimisation:
 
         i.time = Set(within=Reals, initialize=data['time'])
         # [MW]
-        i.charge_power = Var(i.time, bounds=data['charge_power'], initialize=data['soc_initial'])
-        i.discharge_power = Var(i.time, bounds=data['discharge_power'])
+        i.charge_power = Var(i.time, bounds=data['charge_power'], initialize=0.5)
+        i.discharge_power = Var(i.time, bounds=data['discharge_power'], initialize=0)
 
         # [MWh]
-        i.soc = Var(i.time)
+        i.soc = Var(i.time, initialize=data['soc_initial'])
 
         i.corridor_lower_bound = Param(i.time, within=Reals, initialize=data['corridor_lower_bound'])
         i.corridor_upper_bound = Param(i.time, within=Reals, initialize=data['corridor_upper_bound'])
@@ -108,17 +118,17 @@ class DEROptimisation:
             return i.corridor_lower_bound[t], i.soc[t], i.corridor_upper_bound[t]
         i.corridor_constr = Constraint(i.time, rule=stay_in_corridor)
 
-        def soc_expression(m, t):
+        def soc_expression(i, t):
             if t == i.time.first():
                 return i.soc[t] == data['initial_soc'] * i.corridor_upper_bound[t]
             if t == i.time.last():
                 return i.soc[t] == i.corridor_lower_bound[t] + data['initial_soc'] * (i.corridor_upper_bound[t] - i.corridor_lower_bound[t])
             else:
-                return i.soc[t] == m.soc[t - 1] + i.charge_power[t] * i.efficiency[t] - i.discharge_power[t]
+                return i.soc[t] == i.soc[t - 1] + i.charge_power[t] * i.efficiency[t] - i.discharge_power[t]
         # [MWh]
         i.soc_constraint = Constraint(i.time, rule=soc_expression)
 
-        def initial_power_flow(m, t):
+        def initial_power_flow(i, t):
             if t == i.time.first():
                 return i.discharge_power[t] + i.charge_power[t] == 0
             else:
