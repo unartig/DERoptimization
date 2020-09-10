@@ -4,3 +4,7 @@ __pycache__
 .idea
 venv
 starter.py
+Economic_Battery.py
+Economic_P2H.py
+Simple_Economic.py
+

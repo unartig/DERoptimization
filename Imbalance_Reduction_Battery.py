@@ -1,6 +1,7 @@
 from pyomo.core import value
-from pyomo.environ import ConcreteModel, Param, Var, maximize, Objective, Constraint, \
-    Set, Expression, Integers, Piecewise, Expr_if, PositiveIntegers, Binary, NonNegativeReals, Reals, minimize
+from pyomo.core.expr.numeric_expr import AbsExpression
+from pyomo.environ import ConcreteModel, Param, Var,Objective, Constraint, \
+    Set, Expression, Integers, PositiveIntegers, Binary, NonNegativeReals, Reals, minimize
 import matplotlib.pyplot as plt
 import numpy as np
 from pyomo.opt import SolverFactory
@@ -51,6 +52,7 @@ max revenue
 '''
 
 """Setting Initial Parameters"""
+
 # [MWh]
 capacity = 50
 # [MW]
@@ -62,7 +64,7 @@ battery_SOC_max = 0.9 * capacity
 initial_SOC = 0.8 * capacity
 
 
-def t2_rr_battery_model(bid, power_production, critical_t):
+def t23_imbalance_reduction_model(bid, power_production, critical_t, rebap):
     t = len(power_production)
     # Concrete Model
     model = ConcreteModel()
@@ -72,17 +74,14 @@ def t2_rr_battery_model(bid, power_production, critical_t):
     model.time = Set(initialize=range(0, t))
 
     '''
-        Power production and electricity price
-
-        Electricity price and (estimated) power production we take as given.
-
-        Electricity price from the Epex Spot Market
-        Power production is given by estimating the power production from weather data
+        Power production, Bid and reBAP price
     '''
     # [MW]
     model.plant_power_production = Param(model.time, initialize=dict(enumerate(power_production)), within=Reals)
-    # [€/MWh]
+    # [MW]
     model.bid = Param(model.time, initialize=dict(enumerate(bid)), within=Reals)
+    # [€/MWh]
+    model.rebap = Param(model.time, initialize=dict(enumerate(rebap)), within=Reals)
 
     '''
     VARIABLES
@@ -101,7 +100,7 @@ def t2_rr_battery_model(bid, power_production, critical_t):
 
     '''EFFICIENCY'''
 
-    def efficiency_rule(m, t):  # y = R² = 0,9789
+    def efficiency_rule(m, t):
         return -3E-07 * m.charge_power[t] ** 4 + 4E-05 * m.charge_power[t] ** 3 \
                - 0.0017 * m.charge_power[t] ** 2 + 0.0291 * m.charge_power[t] + 0.7916
 
@@ -117,13 +116,22 @@ def t2_rr_battery_model(bid, power_production, critical_t):
     model.net_output = Expression(model.time, rule=net_output_expression)
 
     '''IMBALANCE'''
-
     def imbalance_expression(m, t):
-        # Imbalance [MW] = Net Output (t) [MW] * Bid (t) [€/MWh]
-        return (m.net_output[t] - m.bid[t])**2
-
+        # Imbalance [MW] = Bid (t) [MW] - Net Output (t) [MW]
+        return (m.bid[t] - m.net_output[t])**2
     # [MW]
     model.imbalance = Expression(model.time, rule=imbalance_expression)
+
+    def true_imbalance_expression(m, t):
+        # Imbalance [MW] = Bid (t) [MW] - Net Output (t) [MW]
+        return m.net_output[t] - m.bid[t]
+    # [MW]
+    model.true_imbalance = Expression(model.time, rule=true_imbalance_expression)
+
+    def imbalance_cost_expression(m, t):
+        return m.true_imbalance[t] * m.rebap[t]
+    model.imbalance_cost = Expression(model.time, rule=imbalance_cost_expression)
+    # vlt absexpression benutzen
 
     """CONSTRAINTS"""
 
@@ -131,9 +139,9 @@ def t2_rr_battery_model(bid, power_production, critical_t):
 
     def SOC_expression(m, t):
         if t == 0:
-            return m.battery_SOC[t] == initial_SOC
+            return m.SOC[t] == initial_SOC
         else:
-            return m.battery_SOC[t] == m.battery_SOC[t - 1] + m.charge_power[t] * m.efficiency[t] - m.discharge_power[t]
+            return m.SOC[t] == m.SOC[t - 1] + m.charge_power[t] * m.efficiency[t] - m.discharge_power[t]
 
     # [MWh]
     model.SOC_constraint = Constraint(model.time, rule=SOC_expression)
@@ -142,7 +150,7 @@ def t2_rr_battery_model(bid, power_production, critical_t):
 
     def critical_t_rule(m, t):
         if t == critical_t:
-            return m.battery_SOC[t] == battery_SOC_min
+            return m.SOC[t] == battery_SOC_min
         else:
             return Constraint.Skip
 
@@ -161,7 +169,7 @@ def t2_rr_battery_model(bid, power_production, critical_t):
     model.charge_limit_constr = Constraint(model.time, rule=charge_limit)
 
     def discharge_limit(m, t):
-        return m.discharge_power[t] <= m.battery_SOC[t]
+        return m.discharge_power[t] <= m.SOC[t]
 
     model.discharge_limit_constr = Constraint(model.time, rule=discharge_limit)
 
@@ -170,7 +178,7 @@ def t2_rr_battery_model(bid, power_production, critical_t):
 
     model.carge_discharge_constr = Constraint(model.time, rule=charge_discharge)
 
-    '''"SETS INITIAL POWER FLOW TO 0'''
+    '''SETS INITIAL POWER FLOW TO 0'''
 
     def initial_power_flow(m, t):
         if t == 0:
@@ -186,14 +194,13 @@ def t2_rr_battery_model(bid, power_production, critical_t):
     # revenue = max
     def obj_rule(m):
         return sum(m.imbalance[t] for t in m.time)
-
     model.obj = Objective(rule=obj_rule, sense=minimize)
 
     return model
 
 
 def solve(model):
-    solver = SolverFactory('ipopt')
+    solver = SolverFactory('ipopt.opt')
     results= solver.solve(model)# , tee=True, keepfiles=True)
     #model.display()
 
@@ -219,7 +226,7 @@ def output(model):
     print(f"discharge: {discharge}")
     print(f"efficiency: {eff}")
 
-    battery_SOC = [model.battery_SOC[t]() for t in model.time]
+    battery_SOC = [model.SOC[t]() for t in model.time]
     revenue_arr = [model.revenue[t]() for t in model.time]
 
     e_price_arr = [model.electricity_price[t] for t in model.time]
