@@ -1,0 +1,4 @@
+print_level 5
+output_file log
+
+linear_solver mumps

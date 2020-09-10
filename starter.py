@@ -1,6 +1,4 @@
 from datetime import date, datetime, timedelta
-import Economic_Battery as eco_battery
-import Imbalance_Reduction_Battery as imba_battery
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
