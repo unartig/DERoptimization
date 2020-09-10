@@ -7,21 +7,6 @@ import numpy as np
 from pyomo.opt import SolverFactory
 import pandas as pd
 
-
-"""Setting Initial Parameters"""
-# [MWh]
-capacity = 50
-# [MW]
-battery_max_charge = 48
-battery_max_discharge = 0
-# [MWh]
-# this will be changed to an time series containing the corrdior
-battery_SOC_min = 0.1 * capacity
-battery_SOC_max = 0.9 * capacity
-
-initial_SOC = 0.8 * capacity
-
-
 class DEROptimisation:
 
     def __init__(self, electricity_price, power_production, der_list):
@@ -39,9 +24,12 @@ class DEROptimisation:
         '''VARIABLE INITIALISATION'''
         # [h]
         model.time = Set(initialize=range(0, t))
+        # number of ders
         model.ders = Set(initialize=range(0, len(self.der_list)))
 
-        model.bought_power = Var(model.time, within=NonNegativeReals, initialize=0)
+        # [MWh]
+        model.bought_power = Var(model.time, bounds=(0, 200), within=NonNegativeReals, initialize=0)
+
 
         '''DATA INITIALISATION'''
         # [MW]
@@ -61,15 +49,21 @@ class DEROptimisation:
             return sum(m.blocks[der].discharge_power[t] for der in m.ders)
         model.discharge_power_sum = Expression(model.time, rule=discharge_power_sum_rule)
 
+        '''
         def charge_limit(m, t):
-            return m.charge_power_sum[t] <= m.plant_power_production[t] + m.bought_power[t]
+            return m.charge_power_sum[t] - m.discharge_power_sum[t] <= m.plant_power_production[t] + m.bought_power[t]
         model.charge_limit_constr = Constraint(model.time, rule=charge_limit)
+        '''
 
         def net_output_expression(m, t):
             # Net Output (t) [MW] = Power production (t) [MW] - Battery charge (t) [MW] + Battery discharge (t) [MW]
             return m.plant_power_production[t] - m.charge_power_sum[t] + m.discharge_power_sum[t]
         # [MW]
         model.net_output = Expression(model.time, rule=net_output_expression)
+
+        def positive_net_output_rule(m, t):
+            return m.net_output[t] >= 0
+        model.positive_net_output_constr = Constraint(model.time, rule=positive_net_output_rule)
 
         def energy_direction_rule(m, t):
             return m.net_output[t] * m.bought_power[t] == 0
@@ -83,7 +77,7 @@ class DEROptimisation:
 
         def obj_rule(m):
             return sum(m.revenue[t] for t in m.time)
-        model.obj = Objective(rule=obj_rule)
+        model.obj = Objective(rule=obj_rule, sense=maximize)
 
         return model
 
@@ -102,12 +96,12 @@ class DEROptimisation:
         i.corridor_lower_bound = Param(i.time, within=Reals, initialize=data['corridor_lower_bound'])
         i.corridor_upper_bound = Param(i.time, within=Reals, initialize=data['corridor_upper_bound'])
 
-        def efficiency_rule(m, t):
+        def efficiency_rule(i, t):
             return 1
         i.efficiency = Expression(i.time, rule=efficiency_rule)
 
         def discharge_limit(i, t):
-            return i.discharge_power[t] <= i.soc[t]
+            return i.discharge_power[t] <= i.soc[t] - i.corridor_lower_bound[t]
         i.discharge_limit_constr = Constraint(i.time, rule=discharge_limit)
 
         def charge_discharge(i, t):
@@ -139,7 +133,6 @@ class DEROptimisation:
     def solve(self):
         instance = self.model.create_instance()
         solver = SolverFactory('ipopt')
-        #solver.set_options("max_iter=")
         solver.solve(instance)
         return instance
 
