@@ -27,10 +27,6 @@ class DEROptimisation:
         # number of ders
         model.ders = Set(initialize=range(0, len(self.der_list)))
 
-        # [MWh]
-        #model.bought_power = Var(model.time, bounds=(0, 200), within=NonNegativeReals, initialize=0)
-
-
         '''DATA INITIALISATION'''
         # [MW]
         model.plant_power_production = Param(model.time, initialize=dict(enumerate(power_production)), within=Reals)
@@ -38,33 +34,32 @@ class DEROptimisation:
         model.electricity_price = Param(model.time, initialize=dict(enumerate(electricity_price)), within=Reals)
 
         '''DER INITIALISATION'''
-        model.blocks = Block(model.ders, rule=self.create_abstract_der)
+        model.der = Block(model.ders, rule=self.create_abstract_der)
 
         """CONSTRAINTS"""
         def charge_power_sum_rule(m, t):
-            return sum(m.blocks[der].charge_power[t] for der in m.ders)
+            return sum(m.der[der].charge_power[t] for der in m.ders)
         model.charge_power_sum = Expression(model.time, rule=charge_power_sum_rule)
 
         def discharge_power_sum_rule(m, t):
-            return sum(m.blocks[der].discharge_power[t] for der in m.ders)
+            return sum(m.der[der].discharge_power[t] for der in m.ders)
         model.discharge_power_sum = Expression(model.time, rule=discharge_power_sum_rule)
 
-        '''
+
         def charge_limit(m, t):
-            return m.charge_power_sum[t] - m.discharge_power_sum[t] <= m.plant_power_production[t] + m.bought_power[t]
+            return m.charge_power_sum[t] - m.discharge_power_sum[t] <= m.plant_power_production[t]
         model.charge_limit_constr = Constraint(model.time, rule=charge_limit)
-        '''
+
 
         def net_output_expression(m, t):
             # Net Output (t) [MW] = Power production (t) [MW] - Battery charge (t) [MW] + Battery discharge (t) [MW]
             return m.plant_power_production[t] + m.discharge_power_sum[t] - m.charge_power_sum[t]
         # [MW]
-        model.net_output = Expression(model.time, rule=net_output_expression)
-
+        model.net_flow = Expression(model.time, rule=net_output_expression)
 
         def revenue_expression(m, t):
             # Revenue [€] = Net Output (t) [MW] * Electricity Price (t) [€/MWh]
-            return m.net_output[t] * m.electricity_price[t]
+            return m.net_flow[t] * m.electricity_price[t]
         # [€]
         model.revenue = Expression(model.time, rule=revenue_expression)
 
@@ -84,7 +79,7 @@ class DEROptimisation:
         i.discharge_power = Var(i.time, bounds=data['discharge_power'], initialize=0)
 
         # [MWh]
-        i.soc = Var(i.time, initialize=data['soc_initial'])
+        i.soc = Var(i.time)
 
         i.corridor_lower_bound = Param(i.time, within=Reals, initialize=data['corridor_lower_bound'])
         i.corridor_upper_bound = Param(i.time, within=Reals, initialize=data['corridor_upper_bound'])
