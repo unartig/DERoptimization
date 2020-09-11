@@ -28,7 +28,7 @@ class DEROptimisation:
         model.ders = Set(initialize=range(0, len(self.der_list)))
 
         # [MWh]
-        model.bought_power = Var(model.time, bounds=(0, 200), within=NonNegativeReals, initialize=0)
+        #model.bought_power = Var(model.time, bounds=(0, 200), within=NonNegativeReals, initialize=0)
 
 
         '''DATA INITIALISATION'''
@@ -57,21 +57,14 @@ class DEROptimisation:
 
         def net_output_expression(m, t):
             # Net Output (t) [MW] = Power production (t) [MW] - Battery charge (t) [MW] + Battery discharge (t) [MW]
-            return m.plant_power_production[t] - m.charge_power_sum[t] + m.discharge_power_sum[t]
+            return m.plant_power_production[t] + m.discharge_power_sum[t] - m.charge_power_sum[t]
         # [MW]
         model.net_output = Expression(model.time, rule=net_output_expression)
 
-        def positive_net_output_rule(m, t):
-            return m.net_output[t] >= 0
-        model.positive_net_output_constr = Constraint(model.time, rule=positive_net_output_rule)
-
-        def energy_direction_rule(m, t):
-            return m.net_output[t] * m.bought_power[t] == 0
-        model.energy_direction = Constraint(model.time, rule=energy_direction_rule)
 
         def revenue_expression(m, t):
             # Revenue [€] = Net Output (t) [MW] * Electricity Price (t) [€/MWh]
-            return (m.net_output[t] - m.bought_power[t]) * m.electricity_price[t]
+            return m.net_output[t] * m.electricity_price[t]
         # [€]
         model.revenue = Expression(model.time, rule=revenue_expression)
 

@@ -14,7 +14,7 @@ rebap = np.array(rebap)
 
 power_data = pd.read_csv('datensatz_risikobehaftetes_wetter/power_2018-11-01.csv')
 power_production = np.array(power_data['p[kW]'])
-power_production = np.true_divide(power_production, 100)# MWh
+power_production = np.true_divide(power_production, 10000)# MWh
 
 lower = [0 + 3*x for x in range(0, 169)]
 upper = [50 + 3*x for x in range(0, 169)]
@@ -34,7 +34,7 @@ der_dict = {None: {
     'corridor_upper_bound': upper_dict,
     'soc_initial': mid_dict,
     'charge_inital': char_dict,
-    'initial_soc': 0.5
+    'initial_soc': 0.8
 }}
 
 
@@ -65,7 +65,6 @@ optimisation = DEROptimisation(electricity_price, power_production, liste)
 result = optimisation.solve()
 
 soc0 = [result.blocks[0].soc[t]() for t in result.time]
-soc1 = [result.bought_power[t]() for t in result.time]
 #r = [result.revenue[t]() for t in result.time]
 n = [result.net_output[t]() for t in result.time]
 
@@ -81,11 +80,10 @@ ax11.plot(soc0)
 
 #ax12.plot(lower1)
 #ax12.plot(upper1)
-ax12.plot(soc1)
-#ax12.plot(r)
+#ax12.plot(soc1)
 ax12.plot(n)
 ax12.plot(power_production)
-ax12.legend(["bought", "netto_output", "production"])
+ax12.legend(["netto_output", "production"])
 
 
 plt.show()
