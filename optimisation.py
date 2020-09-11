@@ -112,14 +112,22 @@ class DEROptimisation:
             return i.corridor_lower_bound[t], i.soc[t], i.corridor_upper_bound[t]
         i.corridor_constr = Constraint(i.time, rule=stay_in_corridor)
 
-        def soc_expression(i, t):
+        def soc_inital(i, t):
             if t == i.time.first():
                 return i.soc[t] == data['initial_soc'] * i.corridor_upper_bound[t]
             if t == i.time.last():
                 return i.soc[t] == i.corridor_lower_bound[t] + data['initial_soc'] * (i.corridor_upper_bound[t] - i.corridor_lower_bound[t])
             else:
-                return i.soc[t] == i.soc[t - 1] + i.charge_power[t] * i.efficiency[t] - i.discharge_power[t]
+                return Constraint.Skip
         # [MWh]
+        i.soc_inital_constraint = Constraint(i.time, rule=soc_inital)
+
+        def soc_expression(i, t):
+            if t != i.time.first():
+                return i.soc[t] == i.soc[t - 1] + i.charge_power[t] * i.efficiency[t] - i.discharge_power[t]
+            else:
+                return Constraint.Skip
+            # [MWh]
         i.soc_constraint = Constraint(i.time, rule=soc_expression)
 
         def initial_power_flow(i, t):
@@ -132,7 +140,7 @@ class DEROptimisation:
 
     def solve(self):
         instance = self.model.create_instance()
-        solver = SolverFactory('ipopt')
+        solver = SolverFactory('scip')
         solver.solve(instance)
         return instance
 
