@@ -34,14 +34,9 @@ def show_power():
     line = axs[0].add_collection(lc)
 
     divider = make_axes_locatable(axs[0])
-    cax = divider.new_vertical(size="5%", pad=0.7, pack_start=True)
+    cax = divider.new_vertical(size="5%", pad=0.6)
     fig.add_axes(cax)
     fig.colorbar(line, cax=cax, orientation="horizontal")
-
-    #fig.colorbar(line, cax=axs[1], orientation="horizontal", shrink=0.5)
-
-    axs[0].set_xlim(0, 169)
-    axs[0].set_ylim(min(n), max(n))
 
     x = range(0, len(power[0]))
     axs[0].stackplot(x, power_production, power[0], power[1], colors=["w", "c", "b"])
@@ -51,6 +46,9 @@ def show_power():
     axs[0].set_title("Powers")
     axs[0].legend(["Generation", "DER1", "Netzfluss", "DER2"], loc="upper center", ncol=5)
     axs[0].grid(True)
+
+    axs[0].set_xlim(0, 169)
+    axs[0].set_ylim(min(n), max(n))
 
     lower = [result.der[0].corridor_lower_bound[t] for t in result.time]
     upper = [result.der[0].corridor_upper_bound[t] for t in result.time]
@@ -183,8 +181,10 @@ liste.append(der_dict2)
 optimisation = DEROptimisation(electricity_price, power_production, liste)
 result = optimisation.solve()
 
-plot_der_corridors(2)
-plot_power_flows()
+#plot_der_corridors(2)
+#plot_power_flows()
+
+show_power()
 
 plt.show()
 

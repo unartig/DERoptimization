@@ -1,11 +1,7 @@
-from pyomo.core import value
 from pyomo.environ import AbstractModel, Param, Var, maximize, Objective, Constraint, \
-    Set, Expression, Integers, Piecewise, Expr_if, PositiveIntegers, Binary, NonNegativeReals, Reals, Block, \
-    ConcreteModel
-import matplotlib.pyplot as plt
-import numpy as np
+    Set, Expression, Block, Reals
 from pyomo.opt import SolverFactory
-import pandas as pd
+
 
 class DEROptimisation:
 
@@ -45,17 +41,11 @@ class DEROptimisation:
             return sum(m.der[der].discharge_power[t] for der in m.ders)
         model.discharge_power_sum = Expression(model.time, rule=discharge_power_sum_rule)
 
-
-        def charge_limit(m, t):
-            return m.charge_power_sum[t] - m.discharge_power_sum[t] <= m.plant_power_production[t]
-        model.charge_limit_constr = Constraint(model.time, rule=charge_limit)
-
-
-        def net_output_expression(m, t):
+        def net_flow_expression(m, t):
             # Net Output (t) [MW] = Power production (t) [MW] - Battery charge (t) [MW] + Battery discharge (t) [MW]
             return m.plant_power_production[t] + m.discharge_power_sum[t] - m.charge_power_sum[t]
         # [MW]
-        model.net_flow = Expression(model.time, rule=net_output_expression)
+        model.net_flow = Expression(model.time, rule=net_flow_expression)
 
         def revenue_expression(m, t):
             # Revenue [€] = Net Output (t) [MW] * Electricity Price (t) [€/MWh]
@@ -135,4 +125,3 @@ class DEROptimisation:
     def print_model(self):
         instance = self.model.create_instance()
         instance.pprint()
-
