@@ -2,8 +2,76 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 from optimisation import DEROptimisation
 
+def show_power():
+    fig, axs = plt.subplots(3, 1)
+
+    n = [result.net_flow[t]() for t in result.time]
+
+    soc = [[result.der[der].soc[t]() for t in result.time] for der in result.der]
+
+    power = [[-result.der[der].charge_power[t]() + result.der[der].discharge_power[t]() for t in result.time] for
+             der in result.der]
+
+    price = np.array([result.electricity_price[t] for t in result.time])
+
+    points = np.array([range(0, interval_len), n], dtype=object).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+    min_price = min(price)
+    max_price = max(price)
+
+    norm = plt.Normalize(min_price, max_price)
+    lc = LineCollection(segments, cmap=plt.get_cmap('jet'), norm=norm)# viridis
+
+    # Set the values used for colormapping
+    lc.set_array(np.array(price))
+    lc.set_linewidth(3)
+    line = axs[0].add_collection(lc)
+
+    divider = make_axes_locatable(axs[0])
+    cax = divider.new_vertical(size="5%", pad=0.7, pack_start=True)
+    fig.add_axes(cax)
+    fig.colorbar(line, cax=cax, orientation="horizontal")
+
+    #fig.colorbar(line, cax=axs[1], orientation="horizontal", shrink=0.5)
+
+    axs[0].set_xlim(0, 169)
+    axs[0].set_ylim(min(n), max(n))
+
+    x = range(0, len(power[0]))
+    axs[0].stackplot(x, power_production, power[0], power[1], colors=["w", "c", "b"])
+
+    axs[0].plot(power_production, "m")
+    axs[0].set_ylabel("Power P")
+    axs[0].set_title("Powers")
+    axs[0].legend(["Generation", "DER1", "Netzfluss", "DER2"], loc="upper center", ncol=5)
+    axs[0].grid(True)
+
+    lower = [result.der[0].corridor_lower_bound[t] for t in result.time]
+    upper = [result.der[0].corridor_upper_bound[t] for t in result.time]
+
+    lower1 = [result.der[1].corridor_lower_bound[t] for t in result.time]
+    upper1 = [result.der[1].corridor_upper_bound[t] for t in result.time]
+
+    axs[1].plot(lower, "k--")
+    axs[1].plot(soc[0], "c")
+    axs[1].plot(upper, "k--")
+    axs[1].set_title("Corridor DER1")
+    axs[1].set_ylabel("Energy E")
+    axs[1].grid(True)
+
+    axs[2].plot(lower1, "k--")
+    axs[2].plot(soc[1], "b")
+    axs[2].plot(upper1, "k--")
+    axs[2].set_title("Corridor DER2")
+    axs[2].set_xlabel("Time t")
+    axs[2].set_ylabel("Energy E ")
+    axs[2].grid(True)
 
 def list_to_dict(list):
 
