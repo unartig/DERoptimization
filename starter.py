@@ -3,14 +3,16 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+from matplotlib.colors import ListedColormap, BoundaryNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from optimisation import DEROptimisation
+from optimisation_imba import IMBAOptimisation
 
 def show_power():
-    fig, axs = plt.subplots(3, 1)
+    fig, axs = plt.subplots(4, 1)
 
-    n = [result.net_flow[t]() for t in result.time]
+    net_flow = [result.net_flow[t]() for t in result.time]
 
     soc = [[result.der[der].soc[t]() for t in result.time] for der in result.der]
 
@@ -19,36 +21,46 @@ def show_power():
 
     price = np.array([result.electricity_price[t] for t in result.time])
 
-    points = np.array([range(0, interval_len), n], dtype=object).T.reshape(-1, 1, 2)
+    points = np.array([range(0, interval_len), net_flow], dtype=object).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
 
     min_price = min(price)
     max_price = max(price)
 
     norm = plt.Normalize(min_price, max_price)
-    lc = LineCollection(segments, cmap=plt.get_cmap('jet'), norm=norm)# viridis
+
+    lc = LineCollection(segments, cmap='jet', norm=norm)# viridis
 
     # Set the values used for colormapping
     lc.set_array(np.array(price))
-    lc.set_linewidth(3)
+    lc.set_linewidth(0)
     line = axs[0].add_collection(lc)
 
     divider = make_axes_locatable(axs[0])
-    cax = divider.new_vertical(size="5%", pad=0.6)
+    cax = divider.new_vertical(size="50%", pad=0.7)
     fig.add_axes(cax)
     fig.colorbar(line, cax=cax, orientation="horizontal")
 
+    pseudo_matrix = np.array(electricity_price)
+    pseudo_matrix = np.expand_dims(pseudo_matrix, axis=0)
+    im = axs[0].imshow(pseudo_matrix, cmap="jet")
+
+    axs[0].set_title("Electricity Price")
+    axs[0].get_yaxis().set_visible(False)
+
+
     x = range(0, len(power[0]))
-    axs[0].stackplot(x, power_production, power[0], power[1], colors=["w", "c", "b"])
+    axs[1].stackplot(x, power_production, power[0], power[1], colors=["w", "c", "b"])
 
-    axs[0].plot(power_production, "m")
-    axs[0].set_ylabel("Power P")
-    axs[0].set_title("Powers")
-    axs[0].legend(["Generation", "DER1", "Netzfluss", "DER2"], loc="upper center", ncol=5)
-    axs[0].grid(True)
+    axs[1].plot(power_production, "m")
+    axs[1].plot(net_flow, "r--")
+    axs[1].set_ylabel("Power P")
+    axs[1].set_title("Powers")
+    axs[1].legend(["Generation", "DER1", "Netzfluss", "DER2"], loc="upper center", ncol=5)
+    axs[1].grid(True)
 
-    axs[0].set_xlim(0, 169)
-    axs[0].set_ylim(min(n), max(n))
+    axs[1].set_xlim(0, 169)
+    axs[1].set_ylim(min(net_flow), max(net_flow))
 
     lower = [result.der[0].corridor_lower_bound[t] for t in result.time]
     upper = [result.der[0].corridor_upper_bound[t] for t in result.time]
@@ -56,20 +68,20 @@ def show_power():
     lower1 = [result.der[1].corridor_lower_bound[t] for t in result.time]
     upper1 = [result.der[1].corridor_upper_bound[t] for t in result.time]
 
-    axs[1].plot(lower, "k--")
-    axs[1].plot(soc[0], "c")
-    axs[1].plot(upper, "k--")
-    axs[1].set_title("Corridor DER1")
-    axs[1].set_ylabel("Energy E")
-    axs[1].grid(True)
-
-    axs[2].plot(lower1, "k--")
-    axs[2].plot(soc[1], "b")
-    axs[2].plot(upper1, "k--")
-    axs[2].set_title("Corridor DER2")
-    axs[2].set_xlabel("Time t")
-    axs[2].set_ylabel("Energy E ")
+    axs[2].plot(lower, "k--")
+    axs[2].plot(soc[0], "c")
+    axs[2].plot(upper, "k--")
+    axs[2].set_title("Corridor DER1")
+    axs[2].set_ylabel("Energy E")
     axs[2].grid(True)
+
+    axs[3].plot(lower1, "k--")
+    axs[3].plot(soc[1], "b")
+    axs[3].plot(upper1, "k--")
+    axs[3].set_title("Corridor DER2")
+    axs[3].set_xlabel("Time t")
+    axs[3].set_ylabel("Energy E ")
+    axs[3].grid(True)
 
 def list_to_dict(list):
 
@@ -184,8 +196,27 @@ result = optimisation.solve()
 #plot_der_corridors(2)
 #plot_power_flows()
 
-show_power()
+#show_power()
+power_production = list(power_production)
+print([power_production])
+power_production = power_production[-5:] + power_production[:-5]
+bid = [result.net_flow[t]() for t in result.time]
+print(bid)
+opti2 = IMBAOptimisation(electricity_price, power_production, liste, bid)
+result = opti2.solve()
 
+#show_power()
+
+
+fig = plt.figure()
+plot = fig.add_subplot()
+
+bid3 = [result.net_flow[t]() for t in result.time]
+bid5 = [result.bid[t] for t in result.time]
+
+plot.plot(bid3)
+plot.plot(bid5)
+plot.grid(True)
+plot.legend(["korrektur", "summending", "bid"])
 plt.show()
-
 
