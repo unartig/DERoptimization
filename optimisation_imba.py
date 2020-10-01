@@ -1,12 +1,14 @@
 from pyomo.environ import AbstractModel, Param, Var, maximize, Objective, Constraint, \
-    Set, Expression, Block, Reals, Any
+    Set, Expression, Block, Reals, Any, Integers
 from pyomo.opt import SolverFactory
 
 
 class IMBAOptimisation:
 
-    def __init__(self, electricity_price, power_production, der_list, bid):
+    def __init__(self, electricity_price, power_production, der_list, bid, der1charge, der1dcharge, der2charge, der2dcharge):
 
+        self.der1 = der1charge, der1dcharge
+        self.der2 = der2charge, der2dcharge
         self.der_list = der_list
         self.model = self.create_model(electricity_price, power_production, bid)
 
@@ -29,7 +31,7 @@ class IMBAOptimisation:
         # [€/MWh]
         model.electricity_price = Param(model.time, initialize=dict(enumerate(electricity_price)), within=Reals)
         # [MW]
-        model.bid = Param(model.time, initialize=dict(enumerate(bid)), within=Any)
+        model.bid = Param(model.time, initialize=dict(enumerate(bid)), within=Reals)
 
         '''DER INITIALISATION'''
         model.der = Block(model.ders, rule=self.create_abstract_der)
@@ -64,10 +66,15 @@ class IMBAOptimisation:
 
         data = self.der_list[ders][None]
 
+        if ders == 0:
+            p = self.der1
+        else:
+            p = self.der2
+
         i.time = Set(within=Reals, initialize=data['time'])
         # [MW]
-        i.charge_power = Var(i.time, bounds=data['charge_power'], initialize=0.5)
-        i.discharge_power = Var(i.time, bounds=data['discharge_power'], initialize=0)
+        i.charge_power = Var(i.time, bounds=data['charge_power'], initialize=dict(enumerate(p[0])))
+        i.discharge_power = Var(i.time, bounds=data['discharge_power'], initialize=dict(enumerate(p[1])))
 
         # [MWh]
         i.soc = Var(i.time)
@@ -120,7 +127,7 @@ class IMBAOptimisation:
     def solve(self):
         instance = self.model.create_instance()
         solver = SolverFactory('scip')
-        solver.solve(instance)
+        solver.solve(instance, tee=True)
         return instance
 
     def print_model(self):

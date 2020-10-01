@@ -9,6 +9,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from optimisation import DEROptimisation
 from optimisation_imba import IMBAOptimisation
 
+
 def show_power():
     fig, axs = plt.subplots(4, 1)
 
@@ -82,6 +83,7 @@ def show_power():
     axs[3].set_xlabel("Time t")
     axs[3].set_ylabel("Energy E ")
     axs[3].grid(True)
+
 
 def list_to_dict(list):
 
@@ -193,16 +195,21 @@ liste.append(der_dict2)
 optimisation = DEROptimisation(electricity_price, power_production, liste)
 result = optimisation.solve()
 
-#plot_der_corridors(2)
-#plot_power_flows()
+show_power()
 
-#show_power()
+
 power_production = list(power_production)
-print([power_production])
 power_production = power_production[-5:] + power_production[:-5]
+
 bid = [result.net_flow[t]() for t in result.time]
-print(bid)
-opti2 = IMBAOptimisation(electricity_price, power_production, liste, bid)
+
+der1charge = [result.der[1].charge_power[t]() for t in result.time]
+der1dcharge = [result.der[1].discharge_power[t]() for t in result.time]
+
+der2charge = [result.der[1].charge_power[t]() for t in result.time]
+der2dcharge = [result.der[1].discharge_power[t]() for t in result.time]
+
+opti2 = IMBAOptimisation(electricity_price, power_production, liste, bid, der1charge, der1dcharge, der2charge, der2dcharge)
 result = opti2.solve()
 
 #show_power()
