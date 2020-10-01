@@ -52,12 +52,9 @@ class IMBAOptimisation:
         # [MW]
         model.net_flow = Expression(model.time, rule=net_flow_expression)
 
-        def imbalance_expression(m, t):
-            return (m.bid[t] - m.net_flow[t])**2
-        model.imbalance = Expression(model.time, rule=imbalance_expression)
 
         def obj_rule(m):
-            return sum(m.imbalance[t] for t in m.time)
+            return sum(abs(m.net_flow[t]-m.bid[t]) for t in m.time)
         model.obj = Objective(rule=obj_rule)
 
         return model

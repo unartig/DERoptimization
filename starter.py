@@ -195,16 +195,16 @@ liste.append(der_dict2)
 optimisation = DEROptimisation(electricity_price, power_production, liste)
 result = optimisation.solve()
 
-show_power()
+#show_power()
 
 
 power_production = list(power_production)
-power_production = power_production[-5:] + power_production[:-5]
+power_production = power_production[-1:] + power_production[:-1]
 
 bid = [result.net_flow[t]() for t in result.time]
 
-der1charge = [result.der[1].charge_power[t]() for t in result.time]
-der1dcharge = [result.der[1].discharge_power[t]() for t in result.time]
+der1charge = [result.der[0].charge_power[t]() for t in result.time]
+der1dcharge = [result.der[0].discharge_power[t]() for t in result.time]
 
 der2charge = [result.der[1].charge_power[t]() for t in result.time]
 der2dcharge = [result.der[1].discharge_power[t]() for t in result.time]
