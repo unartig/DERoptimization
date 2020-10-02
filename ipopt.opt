@@ -1,4 +1,5 @@
 print_level 5
 output_file log
 
+max_iter 30000
 linear_solver mumps

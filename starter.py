@@ -143,6 +143,7 @@ def plot_power_flows():
 eprice_data = pd.read_csv('datensatz_risikobehaftetes_wetter/eprice_2018-11-01-2.csv', sep=',')
 eprice_data = eprice_data['Deutschland/Luxemburg[€/MWh]']
 electricity_price = np.array(eprice_data)
+electricity_price = electricity_price[:]
 
 rebap = pd.read_csv('datensatz_risikobehaftetes_wetter/rebap_2018-11-01.CSV')
 rebap = rebap['reBAP [€/Mwh]']
@@ -151,6 +152,7 @@ rebap = np.array(rebap)
 power_data = pd.read_csv('datensatz_risikobehaftetes_wetter/power_2018-11-01.csv')
 power_production = np.array(power_data['p[kW]'])
 power_production = np.true_divide(power_production, 100)# MWh
+power_production = power_production[:]
 
 interval_len = len(power_production)
 
@@ -163,7 +165,7 @@ corridor1_dict = list_to_dict(c1_list[0]), list_to_dict(c1_list[1])
 der_dict1 = {None: {
     'time': range(0, 169),
     'charge_power': (0, 48),
-    'discharge_power': (0, 0),
+    'discharge_power': (0, 48),
     'corridor_lower_bound': corridor1_dict[0],
     'corridor_upper_bound': corridor1_dict[1],
     'soc_guess': c1_list,
@@ -190,6 +192,28 @@ der_dict2 = {None: {
 
 liste = []
 liste.append(der_dict1)
+liste.append(der_dict1)
+liste.append(der_dict1)
+liste.append(der_dict2)
+liste.append(der_dict2)
+liste.append(der_dict2)
+liste.append(der_dict1)
+liste.append(der_dict1)
+liste.append(der_dict1)
+liste.append(der_dict2)
+liste.append(der_dict2)
+liste.append(der_dict2)
+liste.append(der_dict1)
+liste.append(der_dict1)
+liste.append(der_dict1)
+liste.append(der_dict2)
+liste.append(der_dict2)
+liste.append(der_dict2)
+liste.append(der_dict1)
+liste.append(der_dict1)
+liste.append(der_dict1)
+liste.append(der_dict2)
+liste.append(der_dict2)
 liste.append(der_dict2)
 
 optimisation = DEROptimisation(electricity_price, power_production, liste)
@@ -199,7 +223,8 @@ result = optimisation.solve()
 
 
 power_production = list(power_production)
-power_production = power_production[-1:] + power_production[:-1]
+power_production_real = power_production.copy()
+power_production = power_production[-2:] + power_production[:-2]
 
 bid = [result.net_flow[t]() for t in result.time]
 
@@ -212,18 +237,25 @@ der2dcharge = [result.der[1].discharge_power[t]() for t in result.time]
 opti2 = IMBAOptimisation(electricity_price, power_production, liste, bid, der1charge, der1dcharge, der2charge, der2dcharge)
 result = opti2.solve()
 
-#show_power()
+show_power()
 
 
 fig = plt.figure()
-plot = fig.add_subplot()
+plot = fig.subplots()
+
+diff = [power_production_real[t] - power_production[t] for t in range(0,len(power_production))]
 
 bid3 = [result.net_flow[t]() for t in result.time]
+
 bid5 = [result.bid[t] for t in result.time]
+bid6 = [bid5[t] - diff[t]for t in range(0,len(power_production))]
 
 plot.plot(bid3)
+plot.plot(bid6)
+plot.grid(True)
+plot.plot(diff)
 plot.plot(bid5)
 plot.grid(True)
-plot.legend(["korrektur", "summending", "bid"])
+plot.legend(["net flow", "net ohne intraday", "diff", "bid"])
 plt.show()
 

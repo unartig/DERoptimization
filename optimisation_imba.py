@@ -54,7 +54,7 @@ class IMBAOptimisation:
 
 
         def obj_rule(m):
-            return sum(abs(m.net_flow[t]-m.bid[t]) for t in m.time)
+            return sum((m.net_flow[t]-m.bid[t])**2 for t in m.time)
         model.obj = Objective(rule=obj_rule)
 
         return model
@@ -98,8 +98,8 @@ class IMBAOptimisation:
         def soc_inital(i, t):
             if t == i.time.first():
                 return i.soc[t] == data['initial_soc'] * i.corridor_upper_bound[t]
-            if t == i.time.last():
-                return i.soc[t] == i.corridor_lower_bound[t] + data['initial_soc'] * (i.corridor_upper_bound[t] - i.corridor_lower_bound[t])
+            #if t == i.time.last():
+            #    return i.soc[t] == i.corridor_lower_bound[t] + data['initial_soc'] * (i.corridor_upper_bound[t] - i.corridor_lower_bound[t])
             else:
                 return Constraint.Skip
         # [MWh]
@@ -123,7 +123,7 @@ class IMBAOptimisation:
 
     def solve(self):
         instance = self.model.create_instance()
-        solver = SolverFactory('scip')
+        solver = SolverFactory('ipopt')
         solver.solve(instance, tee=True)
         return instance
 
